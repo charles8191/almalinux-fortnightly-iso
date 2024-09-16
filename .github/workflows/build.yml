@@ -1,0 +1,25 @@
+name: Build
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 0 1,15 * *'
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Get current date
+        id: date
+        run: echo "::set-output name=date::$(date +'%Y-%m-%d')"
+      - name: Prepare
+        run: mkdir output
+      - name: Build AlmaLinux ISO
+        run: sudo podman run --privileged -v "$(pwd)/output":/output docker.io/library/almalinux:9 bash -c "dnf install lorax util-linux -y && lorax -p AlmaLinux-UNOFFICIAL -v 9 -r 9 -s https://repo.almalinux.org/almalinux/9/BaseOS/x86_64/os/ -s https://repo.almalinux.org/almalinux/9/AppStream/x86_64/os/ -s https://repo.almalinux.org/almalinux/9/extras/x86_64/os/ /output/output"
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.date.outputs.date }}
+          name: Build on ${{ steps.date.outputs.date }}
+          files: |
+            output/output/images/boot.iso
